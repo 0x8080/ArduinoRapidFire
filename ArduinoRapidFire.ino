@@ -130,9 +130,7 @@ void loop()
     
     SetDelay(L_TRIGGER, 30, DPAD_UP, DPAD_DOWN, DPAD_RIGHT, DPAD_LEFT, 10, 300, 1, 0); // Trigger Input, Delay_In_Up Button, Delay_In_Down Button, Delay_Out_Up Button, Delay_Out_Down Button, MinDelay, MaxDelay, Print via Serial, Print via IIC
     
-    SetProfile(L_TRIGGER, 30, Y_BUTTON, 1, 0); // Trigger Input, Min Trigger Input Value, Button Input, Print via Serial, Print via IIC
-        
-    SetMacroProfile(L_TRIGGER, 30, R_BUMPER, L_BUMPER); // Trigger Input, Min Trigger Input Value, Select Next Profile, Select Previous Profile
+    SetProfile(L_TRIGGER, 30, Y_BUTTON, X_BUTTON, R_BUMPER, L_BUMPER, 1, 0); // Trigger Input, Min Trigger Input Value, Button Input, Macro Next Profile, Macro Prev Profile, Print via Serial, Print via IIC
     
     PrintDebug(0, 300); // 0 = Off 1 = Triggers 2 = ABXY 3 = Bumpers 4 = DPAD, Refresh Delay
   }
@@ -194,9 +192,9 @@ void SetDelay(int TRIGGER_INPUT, int i, int DELAY_IN_UP, int DELAY_IN_DOWN, int 
  
  
 
-void SetProfile(int TRIGGER_INPUT, int i, int BUTTON_INPUT, bool PrintSerial, bool PrintIIC)
+void SetProfile(int TRIGGER_INPUT, int i, int PROFILE_NEXT, int PROFILE_BACK, int MACRO_PROFILE_NEXT, int MACRO_PROFILE_BACK, bool PrintSerial, bool PrintIIC)
   {
-    if (BUTTON_INPUT == LOW && TRIGGER_INPUT > i && Profile <= Profiles)
+    if (PROFILE_NEXT == LOW && TRIGGER_INPUT > i && Profile <= Profiles)
       {
         Profile++;
         
@@ -207,6 +205,38 @@ void SetProfile(int TRIGGER_INPUT, int i, int BUTTON_INPUT, bool PrintSerial, bo
         
         PrintStats(PrintSerial, PrintIIC);
          
+        delay(300);
+      }
+      
+    if (PROFILE_BACK == LOW && TRIGGER_INPUT > i && Profile > 0)
+      {
+        Profile--;
+        
+        PrintStats(PrintSerial, PrintIIC);
+         
+        delay(300);
+      }
+      
+    if (TRIGGER_INPUT > i && MACRO_PROFILE_NEXT == LOW && Macro_Profile < Macro_Profiles)
+      {
+        Macro_Profile++;
+        
+        if (Macro_Profile == Macro_Profiles)
+          {
+            Macro_Profile = 0;
+          }
+        
+        PrintMacroStats(PrintSerial, PrintIIC);
+        
+        delay(300);
+      }
+      
+    if (TRIGGER_INPUT > i && MACRO_PROFILE_BACK == LOW && Macro_Profile > 0)
+      {
+        Macro_Profile--;
+        
+        PrintMacroStats(1, 0);
+        
         delay(300);
       }
   }
@@ -233,6 +263,7 @@ void PrintStats(bool PrintSerial, bool PrintIIC)
 
     if (PrintIIC == 1)
       {
+        display.clearDisplay();
         display.setTextSize(1);
         display.setTextColor(WHITE);
         display.setCursor(0,0);
@@ -251,7 +282,6 @@ void PrintStats(bool PrintSerial, bool PrintIIC)
           display.println(DELAY[Profile][1]);
         
         display.display();
-        display.clearDisplay();
       } 
   }
 
@@ -333,35 +363,6 @@ void GrabInputs()
   }
 
 
-void SetMacroProfile(int TRIGGER_INPUT, int i, int PROFILE_NEXT, int PROFILE_BACK)
-  {
-  
-    
-    if (TRIGGER_INPUT > i && PROFILE_NEXT == LOW && Macro_Profile < Macro_Profiles)
-      {
-        Macro_Profile++;
-        
-        if (Macro_Profile == Macro_Profiles)
-          {
-            Macro_Profile = 0;
-          }
-        
-        PrintMacroStats();
-        
-        delay(300);
-      }
-      
-    if (TRIGGER_INPUT > i && PROFILE_BACK == LOW && Macro_Profile > 0)
-      {
-        Macro_Profile--;
-        
-        PrintMacroStats();
-        
-        delay(300);
-      }
-  }
-
-
 
 void Macro(int TRIGGER_INPUT, int i, int BUTTON_INPUT, int BUTTON_OUTPUT, int NUM_LOOPS)
   {
@@ -385,20 +386,46 @@ void Macro(int TRIGGER_INPUT, int i, int BUTTON_INPUT, int BUTTON_OUTPUT, int NU
 
 
 
-void PrintMacroStats()
+void PrintMacroStats(bool PrintSerial, bool PrintIIC)
   {
-    Serial.print("Macro Profile ");
-      Serial.println(Macro_Profile);
+    if (PrintSerial == 1)
+      {
+        Serial.print("Macro Profile ");
+          Serial.println(Macro_Profile);
+          
+          Serial.print("\t");
+          
+        Serial.print("Delay_In = ");
+          Serial.println(MACRO_DELAY[Macro_Profile][0]);
+          
+          Serial.print("\t");
+          
+        Serial.print("Delay_Out = ");
+          Serial.println(MACRO_DELAY[Macro_Profile][1]);
+      }
       
-      Serial.print("\t");
-      
-    Serial.print("Delay_In = ");
-      Serial.println(MACRO_DELAY[Macro_Profile][0]);
-      
-      Serial.print("\t");
-      
-    Serial.print("Delay_Out = ");
-      Serial.println(MACRO_DELAY[Macro_Profile][1]);
+    if (PrintIIC == 1)
+      {
+        display.clearDisplay();
+        display.setTextSize(1);
+        display.setTextColor(WHITE);
+        display.setCursor(0,0);
+    
+        display.print("Macro Profile ");
+          display.println(Macro_Profile);
+          
+          display.print("\t");
+          
+        display.print("Delay_In = ");
+          display.println(MACRO_DELAY[Macro_Profile][0]);
+          
+          display.print("\t");
+          
+        display.print("Delay_Out = ");
+          display.println(MACRO_DELAY[Macro_Profile][1]);
+        
+        display.display();
+      }
   }
 
 
