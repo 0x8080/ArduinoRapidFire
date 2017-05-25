@@ -9,7 +9,7 @@
 #define OLED_RESET 4
 Adafruit_SSD1306 display(OLED_RESET);
 
-#define NUMFLAKES 10
+#define NUMFLAKES 0
 #define XPOS 0
 #define YPOS 1
 #define DELTAY 2
@@ -18,22 +18,22 @@ Adafruit_SSD1306 display(OLED_RESET);
 #define LOGO16_GLCD_HEIGHT 16 
 #define LOGO16_GLCD_WIDTH  16 
 static const unsigned char PROGMEM logo16_glcd_bmp[] =
-{ B00000000, B11000000,
-  B00000001, B11000000,
-  B00000001, B11000000,
-  B00000011, B11100000,
-  B11110011, B11100000,
-  B11111110, B11111000,
-  B01111110, B11111111,
-  B00110011, B10011111,
-  B00011111, B11111100,
-  B00001101, B01110000,
-  B00011011, B10100000,
-  B00111111, B11100000,
-  B00111111, B11110000,
-  B01111100, B11110000,
-  B01110000, B01110000,
-  B00000000, B00110000 };
+{ B11101110, B01101110,
+  B01001000, B10000100,
+  B01001100, B01100100,
+  B01001000, B00010100,
+  B01001110, B01100100,
+  B00000000, B00000000,
+  B00000000, B00000000,
+  B00000000, B00000000,
+  B00000000, B00000000,
+  B00000000, B00000000,
+  B00000000, B00000000,
+  B00000000, B00000000,
+  B00000000, B00000000,
+  B00000000, B00000000,
+  B00000000, B00000000,
+  B00000000, B00000000 };
 
 #if (SSD1306_LCDHEIGHT != 64)
 #error("Height incorrect, please fix Adafruit_SSD1306.h!");
@@ -116,7 +116,7 @@ void setup()
   
   // internally, this will display the splashscreen.
   display.display();
-  delay(2000);
+  delay(500);
   display.clearDisplay();
   }
 
@@ -130,9 +130,11 @@ void loop()
     
     SetDelay(L_TRIGGER, 30, DPAD_UP, DPAD_DOWN, DPAD_RIGHT, DPAD_LEFT, 10, 300, 1, 0); // Trigger Input, Delay_In_Up Button, Delay_In_Down Button, Delay_Out_Up Button, Delay_Out_Down Button, MinDelay, MaxDelay, Print via Serial, Print via IIC
     
-    SetProfile(L_TRIGGER, 30, Y_BUTTON, X_BUTTON, R_BUMPER, L_BUMPER, 1, 0); // Trigger Input, Min Trigger Input Value, Button Input, Macro Next Profile, Macro Prev Profile, Print via Serial, Print via IIC
+    SetProfile(L_TRIGGER, 30, Y_BUTTON, 1, 0); // Trigger Input, Min Trigger Input Value, Button Input, Print via Serial, Print via IIC
+        
+    SetMacroProfile(L_TRIGGER, 30, R_BUMPER, L_BUMPER); // Trigger Input, Min Trigger Input Value, Select Next Profile, Select Previous Profile
     
-    PrintDebug(0, 300); // 0 = Off 1 = Triggers 2 = ABXY 3 = Bumpers 4 = DPAD, Refresh Delay
+    PrintDebug(0, 300, 1, 0); // 0 = Off 1 = Triggers 2 = ABXY 3 = Bumpers 4 = DPAD, Refresh Delay, Print via Serial, Print via IIC
   }
 
 
@@ -192,9 +194,9 @@ void SetDelay(int TRIGGER_INPUT, int i, int DELAY_IN_UP, int DELAY_IN_DOWN, int 
  
  
 
-void SetProfile(int TRIGGER_INPUT, int i, int PROFILE_NEXT, int PROFILE_BACK, int MACRO_PROFILE_NEXT, int MACRO_PROFILE_BACK, bool PrintSerial, bool PrintIIC)
+void SetProfile(int TRIGGER_INPUT, int i, int BUTTON_INPUT, bool PrintSerial, bool PrintIIC)
   {
-    if (PROFILE_NEXT == LOW && TRIGGER_INPUT > i && Profile <= Profiles)
+    if (BUTTON_INPUT == LOW && TRIGGER_INPUT > i && Profile <= Profiles)
       {
         Profile++;
         
@@ -207,44 +209,14 @@ void SetProfile(int TRIGGER_INPUT, int i, int PROFILE_NEXT, int PROFILE_BACK, in
          
         delay(300);
       }
-      
-    if (PROFILE_BACK == LOW && TRIGGER_INPUT > i && Profile > 0)
-      {
-        Profile--;
-        
-        PrintStats(PrintSerial, PrintIIC);
-         
-        delay(300);
-      }
-      
-    if (TRIGGER_INPUT > i && MACRO_PROFILE_NEXT == LOW && Macro_Profile < Macro_Profiles)
-      {
-        Macro_Profile++;
-        
-        if (Macro_Profile == Macro_Profiles)
-          {
-            Macro_Profile = 0;
-          }
-        
-        PrintMacroStats(PrintSerial, PrintIIC);
-        
-        delay(300);
-      }
-      
-    if (TRIGGER_INPUT > i && MACRO_PROFILE_BACK == LOW && Macro_Profile > 0)
-      {
-        Macro_Profile--;
-        
-        PrintMacroStats(1, 0);
-        
-        delay(300);
-      }
   }
   
 
 
 void PrintStats(bool PrintSerial, bool PrintIIC)
-  {  
+  {
+    int RPM = 3600 / (DELAY[Profile][0] + DELAY[Profile][1]);
+
     if (PrintSerial == 1)
       {
         Serial.print("Profile ");
@@ -259,11 +231,14 @@ void PrintStats(bool PrintSerial, bool PrintIIC)
           
         Serial.print("Delay_Out = ");
           Serial.println(DELAY[Profile][1]);
+
+        Serial.print("Rate of Fire: ");
+          Serial.print(RPM);
+          Serial.println("RPM");
       }
 
     if (PrintIIC == 1)
       {
-        display.clearDisplay();
         display.setTextSize(1);
         display.setTextColor(WHITE);
         display.setCursor(0,0);
@@ -280,14 +255,19 @@ void PrintStats(bool PrintSerial, bool PrintIIC)
           
         display.print("Delay_Out = ");
           display.println(DELAY[Profile][1]);
+
+        display.print("Rate of Fire: ");
+          display.print(RPM);
+          display.print("RPM");
         
         display.display();
+        display.clearDisplay();
       } 
-  }
+  };
 
 
 
-void PrintDebug(int i, int REFRESH_DELAY)
+void PrintDebug(int i, int REFRESH_DELAY, bool PrintSerial, bool PrintIIC)
 {
   switch (i)
     {
@@ -363,6 +343,35 @@ void GrabInputs()
   }
 
 
+void SetMacroProfile(int TRIGGER_INPUT, int i, int PROFILE_NEXT, int PROFILE_BACK)
+  {
+  
+    
+    if (TRIGGER_INPUT > i && PROFILE_NEXT == LOW && Macro_Profile < Macro_Profiles)
+      {
+        Macro_Profile++;
+        
+        if (Macro_Profile == Macro_Profiles)
+          {
+            Macro_Profile = 0;
+          }
+        
+        PrintMacroStats();
+        
+        delay(300);
+      }
+      
+    if (TRIGGER_INPUT > i && PROFILE_BACK == LOW && Macro_Profile > 0)
+      {
+        Macro_Profile--;
+        
+        PrintMacroStats();
+        
+        delay(300);
+      }
+  }
+
+
 
 void Macro(int TRIGGER_INPUT, int i, int BUTTON_INPUT, int BUTTON_OUTPUT, int NUM_LOOPS)
   {
@@ -386,46 +395,20 @@ void Macro(int TRIGGER_INPUT, int i, int BUTTON_INPUT, int BUTTON_OUTPUT, int NU
 
 
 
-void PrintMacroStats(bool PrintSerial, bool PrintIIC)
+void PrintMacroStats()
   {
-    if (PrintSerial == 1)
-      {
-        Serial.print("Macro Profile ");
-          Serial.println(Macro_Profile);
-          
-          Serial.print("\t");
-          
-        Serial.print("Delay_In = ");
-          Serial.println(MACRO_DELAY[Macro_Profile][0]);
-          
-          Serial.print("\t");
-          
-        Serial.print("Delay_Out = ");
-          Serial.println(MACRO_DELAY[Macro_Profile][1]);
-      }
+    Serial.print("Macro Profile ");
+      Serial.println(Macro_Profile);
       
-    if (PrintIIC == 1)
-      {
-        display.clearDisplay();
-        display.setTextSize(1);
-        display.setTextColor(WHITE);
-        display.setCursor(0,0);
-    
-        display.print("Macro Profile ");
-          display.println(Macro_Profile);
-          
-          display.print("\t");
-          
-        display.print("Delay_In = ");
-          display.println(MACRO_DELAY[Macro_Profile][0]);
-          
-          display.print("\t");
-          
-        display.print("Delay_Out = ");
-          display.println(MACRO_DELAY[Macro_Profile][1]);
-        
-        display.display();
-      }
+      Serial.print("\t");
+      
+    Serial.print("Delay_In = ");
+      Serial.println(MACRO_DELAY[Macro_Profile][0]);
+      
+      Serial.print("\t");
+      
+    Serial.print("Delay_Out = ");
+      Serial.println(MACRO_DELAY[Macro_Profile][1]);
   }
 
 
