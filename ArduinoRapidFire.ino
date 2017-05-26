@@ -245,7 +245,7 @@ void SetProfile(int TRIGGER_INPUT, int i, int PROFILE_NEXT, int PROFILE_BACK, in
 
 void PrintStats(bool PrintSerial, bool PrintIIC)
   {
-    int RPM = 3600 / (DELAY[Profile][0] + DELAY[Profile][1]);
+    int RPM = 60000 / (DELAY[Profile][0] + DELAY[Profile][1]);
     
     if (PrintSerial == 1)
       {
@@ -261,6 +261,8 @@ void PrintStats(bool PrintSerial, bool PrintIIC)
           
         Serial.print("Delay_Out = ");
           Serial.println(DELAY[Profile][1]);
+
+          Serial.print("\t");
 
         Serial.print("Rate of Fire: ");
           Serial.print(RPM);
@@ -286,10 +288,12 @@ void PrintStats(bool PrintSerial, bool PrintIIC)
           
         display.print("Delay_Out = ");
           display.println(DELAY[Profile][1]);
+
+          display.print("\t");
           
         display.print("Rate of Fire: ");
           display.print(RPM);
-          display.print("RPM");
+          display.println("RPM");
         
         display.display();
       } 
