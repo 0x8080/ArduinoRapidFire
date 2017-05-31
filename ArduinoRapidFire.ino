@@ -40,9 +40,10 @@ static const unsigned char PROGMEM logo16_glcd_bmp[] =
 #endif
 
 // Pins
-int DPAD_UP_IN = 2, DPAD_DOWN_IN = 3, DPAD_LEFT_IN = 6, DPAD_RIGHT_IN = 5; // DPAD Input Pins
-int A_BUTTON_IN= 9, B_BUTTON_IN = 10, X_BUTTON_IN = 8, Y_BUTTON_IN = 7; // ABXY Input Pins
-  int A_BUTTON_OUT = A0, B_BUTTON_OUT = A1, X_BUTTON_OUT = A6, Y_BUTTON_OUT = A7; // ABXY Output Pins
+int DPAD_IN[4] = {2, 3, 6, 5}; // DPAD Input Pins {UP, DOWN, LEFT RIGHT}
+
+int ABXY_IN[4]= {9, 10, 8, 7}; // ABXY Input Pins {A, B, X, Y}
+  int ABXY_OUT[4] = {A0, A1, A6, A7}; // ABXY Output Pins {A, B, X, Y}
 
 int R_TRIGGER_IN = A3,L_TRIGGER_IN = A2; // Trigger Input Pins
   int R_TRIGGER_OUT = 4; // Trigger Output Pins
@@ -79,27 +80,16 @@ int MACRO_DELAY[Macro_Profiles][2] = { {30, 30} , {30, 30} }; // Array containin
 void setup() 
   {
   // Setting up Pins
-  pinMode(A_BUTTON_IN, INPUT);
-    pinMode(A_BUTTON_IN, LOW); // Enables Pull-Down Resistor to prevent value from floating
-      pinMode(A_BUTTON_OUT, OUTPUT);
-  pinMode(B_BUTTON_IN, INPUT);
-    pinMode(B_BUTTON_IN, LOW);
-      pinMode(B_BUTTON_OUT, OUTPUT);
-  pinMode(X_BUTTON_IN, INPUT);
-    pinMode(X_BUTTON_IN, LOW);
-      pinMode(X_BUTTON_OUT, OUTPUT);
-  pinMode(Y_BUTTON_IN, INPUT);
-    pinMode(Y_BUTTON_IN, LOW);
-      pinMode(Y_BUTTON_OUT, OUTPUT);
-  
-  pinMode(DPAD_UP_IN, INPUT);
-    pinMode(DPAD_UP_IN, LOW);
-  pinMode(DPAD_DOWN_IN, INPUT);
-    pinMode(DPAD_DOWN_IN, LOW);
-  pinMode(DPAD_LEFT_IN, INPUT);
-    pinMode(DPAD_LEFT_IN, LOW);    
-  pinMode(DPAD_RIGHT_IN, INPUT);
-    pinMode(DPAD_RIGHT_IN, LOW);
+  for ( int i = 0; i < 4; i++)
+    {
+      pinMode(ABXY_IN[i], INPUT);
+        pinMode(ABXY_IN[i], LOW); // Enables Pull-Down Resistor to prevent value from floating
+
+      pinMode(ABXY_OUT[i], OUTPUT);
+    
+      pinMode(DPAD_IN[i], INPUT);
+        pinMode(DPAD_IN[i], LOW);
+    }
     
   pinMode(R_BUMPER_IN, INPUT);
     pinMode(R_BUMPER_IN, LOW);
@@ -364,16 +354,16 @@ void GrabInputs()
     L_BUMPER = digitalRead(L_BUMPER_IN);
       
     // Reading values from ABXY
-    A_BUTTON = digitalRead(A_BUTTON_IN);
-    B_BUTTON = digitalRead(B_BUTTON_IN);
-    X_BUTTON = digitalRead(X_BUTTON_IN);
-    Y_BUTTON = digitalRead(Y_BUTTON_IN);
+    A_BUTTON = digitalRead(ABXY_IN[0]);
+    B_BUTTON = digitalRead(ABXY_IN[1]);
+    X_BUTTON = digitalRead(ABXY_IN[2]);
+    Y_BUTTON = digitalRead(ABXY_IN[3]);
     
     // Reading values from DPAD
-    DPAD_UP = digitalRead(DPAD_UP_IN); // Returns HIGH when not pressed and LOW when pressed
-    DPAD_DOWN = digitalRead(DPAD_DOWN_IN); // Returns HIGH when not pressed and LOW when pressed
-    DPAD_LEFT = digitalRead(DPAD_LEFT_IN); // Returns HIGH when not pressed and LOW when pressed
-    DPAD_RIGHT = digitalRead(DPAD_RIGHT_IN); // Returns HIGH when not pressed and LOW when pressed
+    DPAD_UP = digitalRead(DPAD_IN[0]); // Returns HIGH when not pressed and LOW when pressed
+    DPAD_DOWN = digitalRead(DPAD_IN[1]); // Returns HIGH when not pressed and LOW when pressed
+    DPAD_LEFT = digitalRead(DPAD_IN[2]); // Returns HIGH when not pressed and LOW when pressed
+    DPAD_RIGHT = digitalRead(DPAD_IN[3]); // Returns HIGH when not pressed and LOW when pressed
   }
 
 
