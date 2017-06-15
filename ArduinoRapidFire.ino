@@ -14,16 +14,18 @@ int LED = 13; // On-Board LED
 
 int R_TRIGGER_VAL, L_TRIGGER_VAL;
   int R_TRIGGER, L_TRIGGER;
-int L_BUMPER, R_BUMPER;
-int A_BUTTON, B_BUTTON, X_BUTTON, Y_BUTTON;
-int DPAD_UP, DPAD_DOWN, DPAD_LEFT, DPAD_RIGHT;
+bool L_BUMPER, R_BUMPER;
+bool A_BUTTON, B_BUTTON, X_BUTTON, Y_BUTTON;
+bool DPAD_UP, DPAD_DOWN, DPAD_LEFT, DPAD_RIGHT;
 
 // Other Variables
+int Debug_Max = 4;
+
 int Debug = 0;
 
-const int Profiles = 2;   // Number of Profiles (RapidFire)
+unsigned const int Profiles = 10;   // Number of Profiles (RapidFire)
 
-int Profile = 0;  // Current Profile (RapidFire)
+unsigned int Profile = 0;  // Current Profile (RapidFire)
 
 int DELAY[Profiles][2] = { {40, 30} , {90, 30} } ;   // Array containing delay timings for each profile (RapidFire)
 
@@ -51,17 +53,18 @@ void setup()
   // Initializing Serial Comunication
   Serial.begin(9600);
 
-    if ( u8g.getMode() == U8G_MODE_R3G3B2 ) 
+  if ( u8g.getMode() == U8G_MODE_R3G3B2 ) 
+    {
+      u8g.setColorIndex(255);     // white
+    }
+    else if ( u8g.getMode() == U8G_MODE_GRAY2BIT ) 
       {
-        u8g.setColorIndex(255);     // white
-      }
-        else if ( u8g.getMode() == U8G_MODE_GRAY2BIT ) {
         u8g.setColorIndex(3);         // max intensity
       }
-        else if ( u8g.getMode() == U8G_MODE_BW ) {
+    else if ( u8g.getMode() == U8G_MODE_BW ) {
         u8g.setColorIndex(1);         // pixel on
       }
-        else if ( u8g.getMode() == U8G_MODE_HICOLOR ) {
+    else if ( u8g.getMode() == U8G_MODE_HICOLOR ) {
         u8g.setHiColorByRGB(255,255,255);
       }
 
@@ -75,11 +78,11 @@ void loop()
     
     RapidFire(R_TRIGGER, 30, R_TRIGGER_OUT); // Trigger, Min Threshold, Trigger Output
     
-    SetDelay(L_TRIGGER, 30, DPAD_UP, DPAD_DOWN, DPAD_RIGHT, DPAD_LEFT, 10, 300, 0, 1); // Trigger Input, Delay_In_Up Button, Delay_In_Down Button, Delay_Out_Up Button, Delay_Out_Down Button, MinDelay, MaxDelay, Print via Serial, Print via IIC
+    SetDelay(L_TRIGGER, 30, DPAD_UP, DPAD_DOWN, DPAD_RIGHT, DPAD_LEFT, 5, 500, 0, 1); // Trigger Input, Delay_In_Up Button, Delay_In_Down Button, Delay_Out_Up Button, Delay_Out_Down Button, MinDelay, MaxDelay, Print via Serial, Print via IIC
     
     SetProfile(L_TRIGGER, 30, Y_BUTTON, X_BUTTON, 0, 1); // Debug, Trigger Input, Min Trigger Input Value, Button Input, Macro Next Profile, Macro Prev Profile, Print via Serial, Print via IIC
 
-    Debug = 0;
+    SetDebug(L_TRIGGER, 30, R_BUMPER, L_BUMPER, 0, 1);
 
     if (Debug > 0)
       {
@@ -92,15 +95,15 @@ void InitDisplay()
     u8g.firstPage();  
     do {
       u8g.setFont(u8g_font_unifont);
-      u8g.drawStr( 10, 20, "Welcome to");
-      u8g.drawStr( 20, 40, "RapiDuino!");
+      u8g.drawStr( 20, 20, "Welcome to");
+      u8g.drawStr( 21, 40, "RapiDuino!");
     } while( u8g.nextPage() );
     delay(2000);
     PrintStats(0, 1);  
   }
 
 
-void RapidFire(int TRIGGER_INPUT, int i, int TRIGGER_OUTPUT) {
+void RapidFire(int TRIGGER_INPUT, unsigned int i, int TRIGGER_OUTPUT) {
     if (TRIGGER_INPUT > i)
     {
         digitalWrite(TRIGGER_OUTPUT, LOW); // Sends signal that the trigger is pressed
@@ -112,24 +115,24 @@ void RapidFire(int TRIGGER_INPUT, int i, int TRIGGER_OUTPUT) {
   }
 
 
-void SetDelay(int TRIGGER_INPUT, int i, int DELAY_IN_UP, int DELAY_IN_DOWN, int DELAY_OUT_UP, int DELAY_OUT_DOWN, int MinDelay, int MaxDelay, bool PrintSerial, bool PrintIIC)
+void SetDelay(int TRIGGER_INPUT, unsigned int i, bool DELAY_IN_UP, bool DELAY_IN_DOWN, bool DELAY_OUT_UP, bool DELAY_OUT_DOWN, int MinDelay, int MaxDelay, bool PrintSerial, bool PrintIIC)
   {   
     if (TRIGGER_INPUT > i && DELAY_IN_UP == LOW && DELAY[Profile][0] < MaxDelay) // Checks for if the L-Trigger & DPAD-UP is being pressed and that DELAY_IN in below MaxDelay
       {
-        DELAY[Profile][0] += 10;
+        DELAY[Profile][0] += 5;
           
         PrintStats(PrintSerial, PrintIIC);
           
-        delay(300);
+        delay(25);
       }
     
     if (TRIGGER_INPUT > i && DELAY_IN_DOWN == LOW && DELAY[Profile][0] > MinDelay) // Checks for if the L-Trigger & DPAD-DOWN is being pressed and that DELAY_IN in above MinDelay
       {
-        DELAY[Profile][0] -= 10;
+        DELAY[Profile][0] -= 5;
           
         PrintStats(PrintSerial, PrintIIC);
           
-        delay(300);
+        delay(25);
       }
       
     if (TRIGGER_INPUT > i && DELAY_OUT_UP == LOW && DELAY[Profile][1] < MaxDelay) // Checks for if the L-Trigger & DPAD-UP is being pressed and that DELAY_OUT in below MaxDelay
@@ -138,7 +141,7 @@ void SetDelay(int TRIGGER_INPUT, int i, int DELAY_IN_UP, int DELAY_IN_DOWN, int 
           
         PrintStats(PrintSerial, PrintIIC);
           
-        delay(300);
+        delay(25);
       }
   
     if (TRIGGER_INPUT > i && DELAY_OUT_DOWN == LOW && DELAY[Profile][1] > MinDelay) // Checks for if the L-Trigger & DPAD-DOWN is being pressed and that DELAY_IN in above MinValue
@@ -147,12 +150,12 @@ void SetDelay(int TRIGGER_INPUT, int i, int DELAY_IN_UP, int DELAY_IN_DOWN, int 
           
         PrintStats(PrintSerial, PrintIIC);
           
-        delay(300);
+        delay(25);
       }
  }
  
 
-void SetProfile(int TRIGGER_INPUT, int i, int PROFILE_NEXT, int PROFILE_BACK, bool PrintSerial, bool PrintIIC)
+void SetProfile(int TRIGGER_INPUT, unsigned int i, bool PROFILE_NEXT, bool PROFILE_BACK, bool PrintSerial, bool PrintIIC)
   {
     if (PROFILE_NEXT == LOW && TRIGGER_INPUT > i && Profile <= Profiles)
       {
@@ -165,19 +168,63 @@ void SetProfile(int TRIGGER_INPUT, int i, int PROFILE_NEXT, int PROFILE_BACK, bo
         
         PrintStats(PrintSerial, PrintIIC);
          
-        delay(300);
+        delay(100);
       }
       
-    if (PROFILE_BACK == LOW && TRIGGER_INPUT > i && Profile > 0)
+    if (PROFILE_BACK == LOW && TRIGGER_INPUT > i && Profile >= 0)
       {
-        Profile--;
+        if (Profile == 0)
+          {
+            Profile = Profiles;
+            Profile--;
+          }
+          
+        else if (Profile > 0)
+          {
+            Profile--;
+          }
+          
+        PrintStats(PrintSerial, PrintIIC);
+         
+        delay(100);
+      }
+  }
+
+
+void SetDebug(int TRIGGER_INPUT, unsigned int i, bool INC_DEBUG, bool DEC_DEBUG, bool PrintSerial, bool PrintIIC)
+  {
+    if (INC_DEBUG == LOW && TRIGGER_INPUT > i && Debug <= Debug_Max)
+      {
+        Debug++;
+        
+        if (Debug > Debug_Max)
+          {
+            Debug = 0;
+          }
         
         PrintStats(PrintSerial, PrintIIC);
          
-        delay(300);
+        delay(100);
+      }
+      
+    if (DEC_DEBUG == LOW && TRIGGER_INPUT > i && Debug >= 0)
+      {
+        if (Debug == 0)
+          {
+            Debug = Debug_Max;
+            Debug--;
+          }
+          
+        else if (Debug > 0)
+          {
+            Debug--;
+          }
+          
+        PrintStats(PrintSerial, PrintIIC);
+         
+        delay(100);
       }
   }
-  
 
 void PrintStats(bool PrintSerial, bool PrintIIC)
   {
@@ -276,14 +323,72 @@ void PrintStats(bool PrintSerial, bool PrintIIC)
                   case 1 :  u8g.setPrintPos(64, 5);
                               u8g.print("DEBUG: ");
                               u8g.print(Debug);
-
+                              
                             u8g.setPrintPos(66, 15);
                               u8g.print("Right Trigger: ");
                               u8g.print(R_TRIGGER);
-
+                              
                             u8g.setPrintPos(66, 20);
                               u8g.print("Left Trigger: ");
                               u8g.print(L_TRIGGER);
+                              
+                            break;
+                            
+                  case 2 :  u8g.setPrintPos(64, 5);
+                              u8g.print("DEBUG: ");
+                              u8g.print(Debug);
+
+                            u8g.setPrintPos(66, 15);
+                              u8g.print("A: ");
+                              u8g.print(A_BUTTON);
+
+                            u8g.setPrintPos(66, 20);
+                              u8g.print("B: ");
+                              u8g.print(B_BUTTON);
+                              
+                            u8g.setPrintPos(66, 25);
+                              u8g.print("X: ");
+                              u8g.print(X_BUTTON);
+                            
+                            u8g.setPrintPos(66, 30);
+                              u8g.print("Y: ");
+                              u8g.print(Y_BUTTON);
+                            
+                            break;
+                            
+                  case 3 :  u8g.setPrintPos(64, 5);
+                              u8g.print("DEBUG: ");
+                              u8g.print(Debug);
+
+                            u8g.setPrintPos(66, 15);
+                              u8g.print("Right Bumper: ");
+                              u8g.print(R_BUMPER);
+
+                            u8g.setPrintPos(66, 20);
+                              u8g.print("Left Bumper: ");
+                              u8g.print(L_BUMPER);
+
+                            break;
+                  case 4 :  u8g.setPrintPos(64, 5);
+                              u8g.print("DEBUG: ");
+                              u8g.print(Debug);
+
+                            u8g.setPrintPos(66, 15);
+                              u8g.print("DPAD Up: ");
+                              u8g.print(DPAD_UP);
+
+                            u8g.setPrintPos(66, 20);
+                              u8g.print("DPAD Down: ");
+                              u8g.print(DPAD_DOWN);
+                              
+                            u8g.setPrintPos(66, 25);
+                              u8g.print("DPAD Left: ");
+                              u8g.print(DPAD_LEFT);
+                            
+                            u8g.setPrintPos(66, 30);
+                              u8g.print("DPAD Right: ");
+                              u8g.print(DPAD_RIGHT);
+
                             break;
                 }
             } while( u8g.nextPage() );
