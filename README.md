@@ -2,6 +2,4 @@
 
 Dependancies:
 
-1.SSD1306 Libraries
-
-2.Adafruit GFX Lbraries
+1. U8glib, make sure to set your display type
