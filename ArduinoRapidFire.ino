@@ -1,81 +1,33 @@
 // Note that this code has only been set up for XBOX 360 Gampads ONLY as of right now.
+#include <U8glib.h>
 
-#include <SPI.h>
-#include <Wire.h>
-#include <gfxfont.h>
-#include <Adafruit_GFX.h>
-#include <Adafruit_SSD1306.h>
-
-#define OLED_RESET 4
-Adafruit_SSD1306 display(OLED_RESET);
-
-#define NUMFLAKES 0
-#define XPOS 0
-#define YPOS 1
-#define DELTAY 2
-
-
-#define LOGO16_GLCD_HEIGHT 16 
-#define LOGO16_GLCD_WIDTH  16 
-static const unsigned char PROGMEM logo16_glcd_bmp[] =
-{ B11101110, B01101110,
-  B01001000, B10000100,
-  B01001100, B01100100,
-  B01001000, B00010100,
-  B01001110, B01100100,
-  B00000000, B00000000,
-  B00000000, B00000000,
-  B00000000, B00000000,
-  B00000000, B00000000,
-  B00000000, B00000000,
-  B00000000, B00000000,
-  B00000000, B00000000,
-  B00000000, B00000000,
-  B00000000, B00000000,
-  B00000000, B00000000,
-  B00000000, B00000000 };
-
-#if (SSD1306_LCDHEIGHT != 64)
-#error("Height incorrect, please fix Adafruit_SSD1306.h!");
-#endif
+U8GLIB_SSD1306_128X64 u8g(U8G_I2C_OPT_NONE);
 
 // Pins
 int DPAD_IN[4] = {2, 3, 6, 5}; // DPAD Input Pins {UP, DOWN, LEFT RIGHT}
-
 int ABXY_IN[4]= {9, 10, 8, 7}; // ABXY Input Pins {A, B, X, Y}
-  int ABXY_OUT[4] = {A0, A1, A6, A7}; // ABXY Output Pins {A, B, X, Y}
-
 int R_TRIGGER_IN = A3,L_TRIGGER_IN = A2; // Trigger Input Pins
   int R_TRIGGER_OUT = 4; // Trigger Output Pins
-
 int R_BUMPER_IN = 11, L_BUMPER_IN = 12; // Bumper Input Pins
 
 int LED = 13; // On-Board LED
-    
-// Input Values from L & R Triggers
+
 int R_TRIGGER_VAL, L_TRIGGER_VAL;
   int R_TRIGGER, L_TRIGGER;
-  
-// Input Values from Bumpers
-int L_BUMPER, R_BUMPER;
-  
-// Input values from ABXY
-int A_BUTTON, B_BUTTON, X_BUTTON, Y_BUTTON;
-
-// Input values from DPAD
-int DPAD_UP, DPAD_DOWN, DPAD_LEFT, DPAD_RIGHT;
+bool L_BUMPER, R_BUMPER;
+bool A_BUTTON, B_BUTTON, X_BUTTON, Y_BUTTON;
+bool DPAD_UP, DPAD_DOWN, DPAD_LEFT, DPAD_RIGHT;
 
 // Other Variables
-const int Profiles = 2;   // Number of Profiles (RapidFire)
-const int Macro_Profiles = 2; // Number of Profiles (Macro)
+int Debug_Max = 4;
 
-int Profile = 0;  // Current Profile (RapidFire)
-int Macro_Profile = 0; // Current Profile (Macro)
+int Debug = 0;
+
+unsigned const int Profiles = 10;   // Number of Profiles (RapidFire)
+
+unsigned int Profile = 0;  // Current Profile (RapidFire)
 
 int DELAY[Profiles][2] = { {40, 30} , {90, 30} } ;   // Array containing delay timings for each profile (RapidFire)
-int MACRO_DELAY[Macro_Profiles][2] = { {30, 30} , {30, 30} }; // Array containing delay timings for each profile (Macro)
-
-
 
 void setup() 
   {
@@ -84,8 +36,6 @@ void setup()
     {
       pinMode(ABXY_IN[i], INPUT);
         pinMode(ABXY_IN[i], LOW); // Enables Pull-Down Resistor to prevent value from floating
-
-      pinMode(ABXY_OUT[i], OUTPUT);
     
       pinMode(DPAD_IN[i], INPUT);
         pinMode(DPAD_IN[i], LOW);
@@ -102,14 +52,24 @@ void setup()
   
   // Initializing Serial Comunication
   Serial.begin(9600);
-  display.begin(SSD1306_SWITCHCAPVCC, 0x3D);  // initialize with the I2C addr 0x3D (for the 128x64)
-  
-  // internally, this will display the splashscreen.
-  display.display();
-  delay(500);
-  display.clearDisplay();
-  }
 
+  if ( u8g.getMode() == U8G_MODE_R3G3B2 ) 
+    {
+      u8g.setColorIndex(255);     // white
+    }
+    else if ( u8g.getMode() == U8G_MODE_GRAY2BIT ) 
+      {
+        u8g.setColorIndex(3);         // max intensity
+      }
+    else if ( u8g.getMode() == U8G_MODE_BW ) {
+        u8g.setColorIndex(1);         // pixel on
+      }
+    else if ( u8g.getMode() == U8G_MODE_HICOLOR ) {
+        u8g.setHiColorByRGB(255,255,255);
+      }
+
+      InitDisplay();
+  }
 
 
 void loop() 
@@ -118,47 +78,61 @@ void loop()
     
     RapidFire(R_TRIGGER, 30, R_TRIGGER_OUT); // Trigger, Min Threshold, Trigger Output
     
-    SetDelay(L_TRIGGER, 30, DPAD_UP, DPAD_DOWN, DPAD_RIGHT, DPAD_LEFT, 10, 300, 1, 0); // Trigger Input, Delay_In_Up Button, Delay_In_Down Button, Delay_Out_Up Button, Delay_Out_Down Button, MinDelay, MaxDelay, Print via Serial, Print via IIC
+    SetDelay(L_TRIGGER, 30, DPAD_UP, DPAD_DOWN, DPAD_RIGHT, DPAD_LEFT, 5, 500, 0, 1); // Trigger Input, Delay_In_Up Button, Delay_In_Down Button, Delay_Out_Up Button, Delay_Out_Down Button, MinDelay, MaxDelay, Print via Serial, Print via IIC
     
-    SetProfile(L_TRIGGER, 30, Y_BUTTON, X_BUTTON, R_BUMPER, L_BUMPER, 1, 0); // Trigger Input, Min Trigger Input Value, Button Input, Macro Next Profile, Macro Prev Profile, Print via Serial, Print via IIC
-    
-    PrintDebug(0, 300, 1, 0); // 0 = Off 1 = Triggers 2 = ABXY 3 = Bumpers 4 = DPAD, Refresh Delay, Print via Serial, Print via IIC
+    SetProfile(L_TRIGGER, 30, Y_BUTTON, X_BUTTON, 0, 1); // Debug, Trigger Input, Min Trigger Input Value, Button Input, Macro Next Profile, Macro Prev Profile, Print via Serial, Print via IIC
+
+    SetDebug(L_TRIGGER, 30, R_BUMPER, L_BUMPER, 0, 1);
+
+    if (Debug > 0)
+      {
+        PrintStats(0, 1);  
+      }
+  }
+
+void InitDisplay()
+  {
+    u8g.firstPage();  
+    do {
+      u8g.setFont(u8g_font_unifont);
+      u8g.drawStr( 20, 20, "Welcome to");
+      u8g.drawStr( 21, 40, "RapiDuino!");
+    } while( u8g.nextPage() );
+    delay(2000);
+    PrintStats(0, 1);  
   }
 
 
-
-void RapidFire(int TRIGGER_INPUT, int i, int TRIGGER_OUTPUT)
-  { 
+void RapidFire(int TRIGGER_INPUT, unsigned int i, int TRIGGER_OUTPUT) {
     if (TRIGGER_INPUT > i)
     {
-      digitalWrite(TRIGGER_OUTPUT, LOW); // Sends signal that the trigger is pressed
-        delay(DELAY[Profile][0]);
-        
-      digitalWrite(TRIGGER_OUTPUT, HIGH); // Sends signal that the trigger is released
-        delay(DELAY[Profile][1]);
-    }
+        digitalWrite(TRIGGER_OUTPUT, LOW); // Sends signal that the trigger is pressed
+          delay(DELAY[Profile][0]);
+          
+        digitalWrite(TRIGGER_OUTPUT, HIGH); // Sends signal that the trigger is released
+          delay(DELAY[Profile][1]);
+     }
   }
 
 
-
-void SetDelay(int TRIGGER_INPUT, int i, int DELAY_IN_UP, int DELAY_IN_DOWN, int DELAY_OUT_UP, int DELAY_OUT_DOWN, int MinDelay, int MaxDelay, bool PrintSerial, bool PrintIIC)
+void SetDelay(int TRIGGER_INPUT, unsigned int i, bool DELAY_IN_UP, bool DELAY_IN_DOWN, bool DELAY_OUT_UP, bool DELAY_OUT_DOWN, int MinDelay, int MaxDelay, bool PrintSerial, bool PrintIIC)
   {   
     if (TRIGGER_INPUT > i && DELAY_IN_UP == LOW && DELAY[Profile][0] < MaxDelay) // Checks for if the L-Trigger & DPAD-UP is being pressed and that DELAY_IN in below MaxDelay
       {
-        DELAY[Profile][0] += 10;
+        DELAY[Profile][0] += 5;
           
         PrintStats(PrintSerial, PrintIIC);
           
-        delay(300);
+        delay(25);
       }
     
     if (TRIGGER_INPUT > i && DELAY_IN_DOWN == LOW && DELAY[Profile][0] > MinDelay) // Checks for if the L-Trigger & DPAD-DOWN is being pressed and that DELAY_IN in above MinDelay
       {
-        DELAY[Profile][0] -= 10;
+        DELAY[Profile][0] -= 5;
           
         PrintStats(PrintSerial, PrintIIC);
           
-        delay(300);
+        delay(25);
       }
       
     if (TRIGGER_INPUT > i && DELAY_OUT_UP == LOW && DELAY[Profile][1] < MaxDelay) // Checks for if the L-Trigger & DPAD-UP is being pressed and that DELAY_OUT in below MaxDelay
@@ -167,7 +141,7 @@ void SetDelay(int TRIGGER_INPUT, int i, int DELAY_IN_UP, int DELAY_IN_DOWN, int 
           
         PrintStats(PrintSerial, PrintIIC);
           
-        delay(300);
+        delay(25);
       }
   
     if (TRIGGER_INPUT > i && DELAY_OUT_DOWN == LOW && DELAY[Profile][1] > MinDelay) // Checks for if the L-Trigger & DPAD-DOWN is being pressed and that DELAY_IN in above MinValue
@@ -176,13 +150,12 @@ void SetDelay(int TRIGGER_INPUT, int i, int DELAY_IN_UP, int DELAY_IN_DOWN, int 
           
         PrintStats(PrintSerial, PrintIIC);
           
-        delay(300);
+        delay(25);
       }
  }
  
- 
 
-void SetProfile(int TRIGGER_INPUT, int i, int PROFILE_NEXT, int PROFILE_BACK, int MACRO_PROFILE_NEXT, int MACRO_PROFILE_BACK, bool PrintSerial, bool PrintIIC)
+void SetProfile(int TRIGGER_INPUT, unsigned int i, bool PROFILE_NEXT, bool PROFILE_BACK, bool PrintSerial, bool PrintIIC)
   {
     if (PROFILE_NEXT == LOW && TRIGGER_INPUT > i && Profile <= Profiles)
       {
@@ -195,43 +168,63 @@ void SetProfile(int TRIGGER_INPUT, int i, int PROFILE_NEXT, int PROFILE_BACK, in
         
         PrintStats(PrintSerial, PrintIIC);
          
-        delay(300);
+        delay(100);
       }
       
-    if (PROFILE_BACK == LOW && TRIGGER_INPUT > i && Profile > 0)
+    if (PROFILE_BACK == LOW && TRIGGER_INPUT > i && Profile >= 0)
       {
-        Profile--;
+        if (Profile == 0)
+          {
+            Profile = Profiles;
+            Profile--;
+          }
+          
+        else if (Profile > 0)
+          {
+            Profile--;
+          }
+          
+        PrintStats(PrintSerial, PrintIIC);
+         
+        delay(100);
+      }
+  }
+
+
+void SetDebug(int TRIGGER_INPUT, unsigned int i, bool INC_DEBUG, bool DEC_DEBUG, bool PrintSerial, bool PrintIIC)
+  {
+    if (INC_DEBUG == LOW && TRIGGER_INPUT > i && Debug <= Debug_Max)
+      {
+        Debug++;
+        
+        if (Debug > Debug_Max)
+          {
+            Debug = 0;
+          }
         
         PrintStats(PrintSerial, PrintIIC);
          
-        delay(300);
+        delay(100);
       }
       
-    if (TRIGGER_INPUT > i && MACRO_PROFILE_NEXT == LOW && Macro_Profile < Macro_Profiles)
+    if (DEC_DEBUG == LOW && TRIGGER_INPUT > i && Debug >= 0)
       {
-        Macro_Profile++;
-        
-        if (Macro_Profile == Macro_Profiles)
+        if (Debug == 0)
           {
-            Macro_Profile = 0;
+            Debug = Debug_Max;
+            Debug--;
           }
-        
-        PrintMacroStats(PrintSerial, PrintIIC);
-        
-        delay(300);
-      }
-      
-    if (TRIGGER_INPUT > i && MACRO_PROFILE_BACK == LOW && Macro_Profile > 0)
-      {
-        Macro_Profile--;
-        
-        PrintMacroStats(PrintSerial, PrintIIC);
-        
-        delay(300);
+          
+        else if (Debug > 0)
+          {
+            Debug--;
+          }
+          
+        PrintStats(PrintSerial, PrintIIC);
+         
+        delay(100);
       }
   }
-  
-
 
 void PrintStats(bool PrintSerial, bool PrintIIC)
   {
@@ -257,87 +250,150 @@ void PrintStats(bool PrintSerial, bool PrintIIC)
         Serial.print("Rate of Fire: ");
           Serial.print(RPM);
           Serial.println("RPM");
+
+        switch (Debug)
+          {
+            case 1 : Serial.print("Right Trigger = ");
+                      Serial.println(R_TRIGGER);         
+                     Serial.print("Left Trigger = ");
+                      Serial.println(L_TRIGGER);      
+                     Serial.println();
+                     break;
+                       
+            case 2 : Serial.print("A Button = ");
+                       Serial.println(A_BUTTON);
+                     Serial.print("B Button = ");
+                       Serial.println(B_BUTTON);
+                     Serial.print("X Button = ");
+                       Serial.println(X_BUTTON);
+                     Serial.print("Y Button = ");
+                       Serial.println(Y_BUTTON);
+                     Serial.println();
+                     break;
+      
+            case 3 : Serial.print("R Bumper = ");
+                      Serial.println(R_BUMPER);
+                     Serial.print("L Bumper = ");
+                      Serial.println(L_BUMPER);
+                     Serial.println();
+                     break;
+      
+            case 4 : Serial.print("DPAD UP = ");
+                      Serial.println(DPAD_UP);
+                     Serial.print("DPAD DOWN = ");
+                      Serial.println(DPAD_DOWN);
+                     Serial.print("DPAD LEFT = ");
+                      Serial.println(DPAD_LEFT);
+                     Serial.print("DPAD RIGHT = ");
+                      Serial.println(DPAD_RIGHT);
+                     Serial.println();
+                     break;
+          }
       }
+
 
     if (PrintIIC == 1)
       {
-        display.clearDisplay();
-        display.setTextSize(1);
-        display.setTextColor(WHITE);
-        display.setCursor(0,0);
-    
-        display.print("Profile ");
-          display.println(Profile);
-          
-          display.print("\t");
-          
-        display.print("Delay_In = ");
-          display.println(DELAY[Profile][0]);
-          
-          display.print("\t");
-          
-        display.print("Delay_Out = ");
-          display.println(DELAY[Profile][1]);
+          u8g.firstPage();  
+          do 
+            {
+              u8g.setFont(u8g_font_u8glib_4);
+              u8g.setPrintPos(0, 5);
+                u8g.print("Profile ");
+                u8g.print(Profile);
 
-          display.print("\t");
-          
-        display.print("Rate of Fire: ");
-          display.print(RPM);
-          display.println("RPM");
-        
-        display.display();
-      } 
+              u8g.setPrintPos(2, 15);
+                u8g.print("Delay In = ");
+                u8g.print(DELAY[Profile][0]);
+                u8g.print("ms");
+                
+              u8g.setPrintPos(2, 20);
+                u8g.print("Delay Out = ");
+                u8g.print(DELAY[Profile][1]);
+                u8g.print("ms");
+              
+              u8g.setPrintPos(2, 25);
+                u8g.print(RPM);
+                u8g.print(" RPM");
+
+              switch(Debug)
+                {
+                  case 0 : break;
+                  
+                  case 1 :  u8g.setPrintPos(64, 5);
+                              u8g.print("DEBUG: ");
+                              u8g.print(Debug);
+                              
+                            u8g.setPrintPos(66, 15);
+                              u8g.print("Right Trigger: ");
+                              u8g.print(R_TRIGGER);
+                              
+                            u8g.setPrintPos(66, 20);
+                              u8g.print("Left Trigger: ");
+                              u8g.print(L_TRIGGER);
+                              
+                            break;
+                            
+                  case 2 :  u8g.setPrintPos(64, 5);
+                              u8g.print("DEBUG: ");
+                              u8g.print(Debug);
+
+                            u8g.setPrintPos(66, 15);
+                              u8g.print("A: ");
+                              u8g.print(A_BUTTON);
+
+                            u8g.setPrintPos(66, 20);
+                              u8g.print("B: ");
+                              u8g.print(B_BUTTON);
+                              
+                            u8g.setPrintPos(66, 25);
+                              u8g.print("X: ");
+                              u8g.print(X_BUTTON);
+                            
+                            u8g.setPrintPos(66, 30);
+                              u8g.print("Y: ");
+                              u8g.print(Y_BUTTON);
+                            
+                            break;
+                            
+                  case 3 :  u8g.setPrintPos(64, 5);
+                              u8g.print("DEBUG: ");
+                              u8g.print(Debug);
+
+                            u8g.setPrintPos(66, 15);
+                              u8g.print("Right Bumper: ");
+                              u8g.print(R_BUMPER);
+
+                            u8g.setPrintPos(66, 20);
+                              u8g.print("Left Bumper: ");
+                              u8g.print(L_BUMPER);
+
+                            break;
+                  case 4 :  u8g.setPrintPos(64, 5);
+                              u8g.print("DEBUG: ");
+                              u8g.print(Debug);
+
+                            u8g.setPrintPos(66, 15);
+                              u8g.print("DPAD Up: ");
+                              u8g.print(DPAD_UP);
+
+                            u8g.setPrintPos(66, 20);
+                              u8g.print("DPAD Down: ");
+                              u8g.print(DPAD_DOWN);
+                              
+                            u8g.setPrintPos(66, 25);
+                              u8g.print("DPAD Left: ");
+                              u8g.print(DPAD_LEFT);
+                            
+                            u8g.setPrintPos(66, 30);
+                              u8g.print("DPAD Right: ");
+                              u8g.print(DPAD_RIGHT);
+
+                            break;
+                }
+            } while( u8g.nextPage() );
+      }
   }
-
-
-
-void PrintDebug(int i, int REFRESH_DELAY, bool PrintSerial, bool PrintIIC)
-{
-  switch (i)
-    {
-      case 1 : Serial.print("Right Trigger = ");
-                Serial.println(R_TRIGGER);         
-               Serial.print("Left Trigger = ");
-                Serial.println(L_TRIGGER);      
-               Serial.println();
-               break;
-                 
-      case 2 : Serial.print("A Button = ");
-                 Serial.println(A_BUTTON);
-               Serial.print("B Button = ");
-                 Serial.println(B_BUTTON);
-               Serial.print("X Button = ");
-                 Serial.println(X_BUTTON);
-               Serial.print("Y Button = ");
-                 Serial.println(Y_BUTTON);
-               Serial.println();
-               break;
-
-      case 3 : Serial.print("R Bumper = ");
-                Serial.println(R_BUMPER);
-               Serial.print("L Bumper = ");
-                Serial.println(L_BUMPER);
-               Serial.println();
-               break;
-
-      case 4 : Serial.print("DPAD UP = ");
-                Serial.println(DPAD_UP);
-               Serial.print("DPAD DOWN = ");
-                Serial.println(DPAD_DOWN);
-               Serial.print("DPAD LEFT = ");
-                Serial.println(DPAD_LEFT);
-               Serial.print("DPAD RIGHT = ");
-                Serial.println(DPAD_RIGHT);
-               Serial.println();
-               break;
-    }
-    
-  if(i > 0)
-    {
-       delay(REFRESH_DELAY);
-    }
-}
-
 
 
 void GrabInputs()
@@ -364,80 +420,4 @@ void GrabInputs()
     DPAD_DOWN = digitalRead(DPAD_IN[1]); // Returns HIGH when not pressed and LOW when pressed
     DPAD_LEFT = digitalRead(DPAD_IN[2]); // Returns HIGH when not pressed and LOW when pressed
     DPAD_RIGHT = digitalRead(DPAD_IN[3]); // Returns HIGH when not pressed and LOW when pressed
-  }
-
-
-
-void Macro(int TRIGGER_INPUT, int i, int BUTTON_INPUT, int BUTTON_OUTPUT, int NUM_LOOPS)
-  {
-    int LOOP = 0;  
-    
-    if (TRIGGER_INPUT > i && BUTTON_INPUT == LOW)
-      {
-        if (NUM_LOOPS == -1)
-        {
-          ButtonOutput(BUTTON_OUTPUT);
-        }
-        
-        if (NUM_LOOPS >= 1 && LOOP <= NUM_LOOPS)
-        {
-          ButtonOutput(BUTTON_OUTPUT);
-          
-          LOOP++;
-        }
-      }
-  }
-
-
-
-void PrintMacroStats(bool PrintSerial, bool PrintIIC)
-  {
-    if (PrintSerial == 1)
-      {
-        Serial.print("Macro Profile ");
-          Serial.println(Macro_Profile);
-          
-          Serial.print("\t");
-          
-        Serial.print("Delay_In = ");
-          Serial.println(MACRO_DELAY[Macro_Profile][0]);
-          
-          Serial.print("\t");
-          
-        Serial.print("Delay_Out = ");
-          Serial.println(MACRO_DELAY[Macro_Profile][1]);
-      }
-      
-    if (PrintIIC == 1)
-      {
-        display.clearDisplay();
-        display.setTextSize(1);
-        display.setTextColor(WHITE);
-        display.setCursor(0,0);
-    
-        display.print("Macro Profile ");
-          display.println(Macro_Profile);
-          
-          display.print("\t");
-          
-        display.print("Delay_In = ");
-          display.println(MACRO_DELAY[Macro_Profile][0]);
-          
-          display.print("\t");
-          
-        display.print("Delay_Out = ");
-          display.println(MACRO_DELAY[Macro_Profile][1]);
-        
-        display.display();
-      }
-  }
-
-
-
-void ButtonOutput(int BUTTON_OUTPUT)
-  {
-    digitalWrite(BUTTON_OUTPUT, HIGH);
-      delay(MACRO_DELAY[Macro_Profile][0]);
-    digitalWrite(BUTTON_OUTPUT, LOW);
-      delay(MACRO_DELAY[Macro_Profile][1]);
   }
