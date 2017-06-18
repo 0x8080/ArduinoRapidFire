@@ -1,14 +1,22 @@
 // Note that this code has only been set up for XBOX 360 Gampads ONLY as of right now.
 #include <U8glib.h>
+#include <SPI.h>
+#include <SD.h>
+
+#define Debug_Max 4
 
 U8GLIB_SSD1306_128X64 u8g(U8G_I2C_OPT_NONE);
+
+Sd2Card card;
+SdVolume volume;
+SdFile root;
 
 // Pins
 int DPAD_IN[4] = {2, 3, 6, 5}; // DPAD Input Pins {UP, DOWN, LEFT RIGHT}
 int ABXY_IN[4]= {9, 10, 8, 7}; // ABXY Input Pins {A, B, X, Y}
 int R_TRIGGER_IN = A3,L_TRIGGER_IN = A2; // Trigger Input Pins
   int R_TRIGGER_OUT = 4; // Trigger Output Pins
-int R_BUMPER_IN = 11, L_BUMPER_IN = 12; // Bumper Input Pins
+int R_BUMPER_IN = A0, L_BUMPER_IN = A1; // Bumper Input Pins
 
 int LED = 13; // On-Board LED
 
@@ -19,12 +27,16 @@ bool A_BUTTON, B_BUTTON, X_BUTTON, Y_BUTTON;
 bool DPAD_UP, DPAD_DOWN, DPAD_LEFT, DPAD_RIGHT;
 
 // Other Variables
-int Debug_Max = 4;
-
 int Debug = 0;
 
-unsigned const int Profiles = 10;   // Number of Profiles (RapidFire)
+bool SDpresent;
+int SDspace_total;
+int SDspace_used;
+int SDspace_free;
 
+const int chipSelect = NULL;
+
+unsigned const int Profiles = 2;   // Number of Profiles (RapidFire)
 unsigned int Profile = 0;  // Current Profile (RapidFire)
 
 int DELAY[Profiles][2] = { {40, 30} , {90, 30} } ;   // Array containing delay timings for each profile (RapidFire)
@@ -74,15 +86,15 @@ void setup()
 
 void loop() 
   {
-    GrabInputs(); // Reads and stores values from I/O
+    //GrabInputs(); // Reads and stores values from I/O
     
-    RapidFire(R_TRIGGER, 30, R_TRIGGER_OUT); // Trigger, Min Threshold, Trigger Output
+    //RapidFire(R_TRIGGER, 30, R_TRIGGER_OUT); // Trigger, Min Threshold, Trigger Output
     
-    SetDelay(L_TRIGGER, 30, DPAD_UP, DPAD_DOWN, DPAD_RIGHT, DPAD_LEFT, 5, 500, 0, 1); // Trigger Input, Delay_In_Up Button, Delay_In_Down Button, Delay_Out_Up Button, Delay_Out_Down Button, MinDelay, MaxDelay, Print via Serial, Print via IIC
+    //SetDelay(L_TRIGGER, 30, DPAD_UP, DPAD_DOWN, DPAD_RIGHT, DPAD_LEFT, 5, 500, 0, 1); // Trigger Input, Delay_In_Up Button, Delay_In_Down Button, Delay_Out_Up Button, Delay_Out_Down Button, MinDelay, MaxDelay, Print via Serial, Print via IIC
     
-    SetProfile(L_TRIGGER, 30, Y_BUTTON, X_BUTTON, 0, 1); // Debug, Trigger Input, Min Trigger Input Value, Button Input, Macro Next Profile, Macro Prev Profile, Print via Serial, Print via IIC
+    //SetProfile(L_TRIGGER, 30, Y_BUTTON, X_BUTTON, 0, 1); // Debug, Trigger Input, Min Trigger Input Value, Button Input, Macro Next Profile, Macro Prev Profile, Print via Serial, Print via IIC
 
-    SetDebug(L_TRIGGER, 30, R_BUMPER, L_BUMPER, 0, 1);
+    //SetDebug(L_TRIGGER, 30, B_BUTTON, A_BUTTON, 0, 1);
 
     if (Debug > 0)
       {
@@ -99,7 +111,86 @@ void InitDisplay()
       u8g.drawStr( 21, 40, "RapiDuino!");
     } while( u8g.nextPage() );
     delay(2000);
-    PrintStats(0, 1);  
+    InitSD();
+    PrintStats(0, 1);
+  }
+
+void InitSD()
+  {
+          u8g.firstPage();
+          do
+            {
+              int x = 0;
+              int y = 5;
+
+              u8g.setPrintPos(x,y);
+              u8g.setFont(u8g_font_u8glib_4);
+            
+              u8g.print("Initializing SD card...");
+              
+              // we'll use the initialization code from the utility libraries
+              // since we're just testing if the card is working!
+              if (!card.init(SPI_HALF_SPEED, chipSelect)) {
+
+                u8g.setPrintPos(x,y+=5);
+                u8g.print("SD card not present");
+                SDpresent = 0;
+                return;
+              } else {
+                u8g.setPrintPos(x,y+=5);
+                u8g.print("SD card is present");
+                SDpresent = 1;
+              }
+            
+              // print the type of card
+              if (SDpresent == 1)
+                {
+                  u8g.setPrintPos(x,y+=10);
+                  u8g.print("Card Type: ");
+    
+                  switch (card.type()) {
+                    case SD_CARD_TYPE_SD1:
+                      u8g.print("SD1");
+                      break;
+                    case SD_CARD_TYPE_SD2:
+                      u8g.print("SD2");
+                      break;
+                    case SD_CARD_TYPE_SDHC:
+                      u8g.print("SDHC");
+                      break;
+                    default:
+                      u8g.print("Unknown");
+                  }
+    
+                  u8g.setPrintPos(x,y+=10);
+                  // Now we will try to open the 'volume'/'partition' - it should be FAT16 or FAT32
+                  if (!volume.init(card)) {
+                    u8g.print("No FAT16/FAT32 partitions.");
+                    return;
+                  }
+                
+                  // print the type and size of the first FAT-type volume
+                  uint32_t volumesize;
+                
+                  volumesize = volume.blocksPerCluster();    // clusters are collections of blocks
+                  volumesize *= volume.clusterCount();       // we'll have a lot of clusters
+                  volumesize *= 512;                            // SD card blocks are always 512 bytes
+                  
+                  volumesize /= 1024;
+                  volumesize /= 1024;
+                  u8g.print("Size: ");
+                  
+                  SDspace_total = volumesize;
+                  
+                  u8g.print(volumesize);
+                  u8g.print("MB");
+                  
+                  root.openRoot(volume);
+                }
+              
+            } while ( u8g.nextPage() );
+
+        delay(2000);
   }
 
 
@@ -212,7 +303,6 @@ void SetDebug(int TRIGGER_INPUT, unsigned int i, bool INC_DEBUG, bool DEC_DEBUG,
         if (Debug == 0)
           {
             Debug = Debug_Max;
-            Debug--;
           }
           
         else if (Debug > 0)
@@ -297,24 +387,39 @@ void PrintStats(bool PrintSerial, bool PrintIIC)
           u8g.firstPage();  
           do 
             {
+              int x = 0;
+              int y = 5;
+              
               u8g.setFont(u8g_font_u8glib_4);
-              u8g.setPrintPos(0, 5);
+              u8g.setPrintPos(x, y);
                 u8g.print("Profile ");
                 u8g.print(Profile);
 
-              u8g.setPrintPos(2, 15);
+              u8g.setPrintPos(x+2, y+=10);
                 u8g.print("Delay In = ");
                 u8g.print(DELAY[Profile][0]);
                 u8g.print("ms");
                 
-              u8g.setPrintPos(2, 20);
+              u8g.setPrintPos(x+2, y+=5);
                 u8g.print("Delay Out = ");
                 u8g.print(DELAY[Profile][1]);
                 u8g.print("ms");
               
-              u8g.setPrintPos(2, 25);
+              u8g.setPrintPos(x+2, y+=5);
                 u8g.print(RPM);
                 u8g.print(" RPM");
+
+              u8g.setPrintPos(x, 64);
+                u8g.print("SD card: ");
+                if (SDpresent == 1)
+                  { 
+                        u8g.print(SDspace_total);
+                        u8g.print("MB");
+                  }
+                 else 
+                  {
+                    u8g.print("Not Present");
+                  }
 
               switch(Debug)
                 {
@@ -394,7 +499,6 @@ void PrintStats(bool PrintSerial, bool PrintIIC)
             } while( u8g.nextPage() );
       }
   }
-
 
 void GrabInputs()
   {
