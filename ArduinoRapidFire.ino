@@ -13,22 +13,22 @@ SdVolume volume;
 SdFile root;
 
 // Pins
-int DPAD_IN[4] = {2, 3, 6, 5}; // DPAD Input Pins {UP, DOWN, LEFT RIGHT}
-int ABXY_IN[4]= {9, 10, 8, 7}; // ABXY Input Pins {A, B, X, Y}
-int R_TRIGGER_IN = A3,L_TRIGGER_IN = A2; // Trigger Input Pins
-  int R_TRIGGER_OUT = 4; // Trigger Output Pins
-int R_BUMPER_IN = A0, L_BUMPER_IN = A1; // Bumper Input Pins
+byte DPAD_IN[4] = {2, 3, 6, 5};                       // DPAD Input Pins {UP, DOWN, LEFT RIGHT}
+byte ABXY_IN[4]= {9, 10, 8, 7};                       // ABXY Input Pins {A, B, X, Y}
+int R_TRIGGER_IN = A3,L_TRIGGER_IN = A2;             // Trigger Input Pins
+  byte R_TRIGGER_OUT = 4;                             // Trigger Output Pins
+int R_BUMPER_IN = A0, L_BUMPER_IN = A1;              // Bumper Input Pins
 
-int LED = 13; // On-Board LED
+byte LED = 13;                                        // On-Board LED
 
 int R_TRIGGER_VAL, L_TRIGGER_VAL;
-  int R_TRIGGER, L_TRIGGER;
+  byte R_TRIGGER, L_TRIGGER;
 bool L_BUMPER, R_BUMPER;
 bool A_BUTTON, B_BUTTON, X_BUTTON, Y_BUTTON;
 bool DPAD_UP, DPAD_DOWN, DPAD_LEFT, DPAD_RIGHT;
 
 // Other Variables
-int Debug = 0;
+byte Debug = 0;
 
 bool SDpresent;
 int SDspace_total;
@@ -37,17 +37,17 @@ int SDspace_free;
 
 const int chipSelect = NULL;
 
-unsigned int Profile = 0;  // Current Profile (RapidFire)
+byte Profile = 0;                            // Current Profile (RapidFire)
 
-int DELAY[Profiles][2] = { {40, 30} , {90, 30} } ;   // Array containing delay timings for each profile (RapidFire)
+byte DELAY[Profiles][2] = { {40, 30} , {90, 30} } ;   // Array containing delay timings for each profile (RapidFire)
 
 void setup() 
   {
   // Setting up Pins
-  for ( int i = 0; i < 4; i++)
+  for ( byte i = 0; i < 4; i++)
     {
       pinMode(ABXY_IN[i], INPUT);
-        pinMode(ABXY_IN[i], LOW); // Enables Pull-Down Resistor to prevent value from floating
+        pinMode(ABXY_IN[i], LOW);                     // Enables Pull-Down Resistor to prevent value from floating
     
       pinMode(DPAD_IN[i], INPUT);
         pinMode(DPAD_IN[i], LOW);
@@ -83,15 +83,15 @@ void setup()
 
 void loop() 
   {
-    //GrabInputs(); // Reads and stores values from I/O
+    GrabInputs();                                                                   // Reads and stores values from I/O
     
-    //RapidFire(R_TRIGGER, 30, R_TRIGGER_OUT); // Trigger, Min Threshold, Trigger Output
+    RapidFire(R_TRIGGER, 30, R_TRIGGER_OUT);                                        // Trigger, Min Threshold, Trigger Output
     
-    //SetDelay(L_TRIGGER, 30, DPAD_UP, DPAD_DOWN, DPAD_RIGHT, DPAD_LEFT, 5, 500); // Trigger Input, Delay_In_Up Button, Delay_In_Down Button, Delay_Out_Up Button, Delay_Out_Down Button, MinDelay, MaxDelay, Print via Serial, Print via IIC
+    SetDelay(L_TRIGGER, 30, DPAD_UP, DPAD_DOWN, DPAD_RIGHT, DPAD_LEFT, 5, 500);     // Trigger Input, Delay_In_Up Button, Delay_In_Down Button, Delay_Out_Up Button, Delay_Out_Down Button, MinDelay, MaxDelay, Print via Serial, Print via IIC
     
-    //SetProfile(L_TRIGGER, 30, Y_BUTTON, X_BUTTON); // Debug, Trigger Input, Min Trigger Input Value, Button Input, Macro Next Profile, Macro Prev Profile, Print via Serial, Print via IIC
+    SetProfile(L_TRIGGER, 30, Y_BUTTON, X_BUTTON);                                  // Debug, Trigger Input, Min Trigger Input Value, Button Input, Macro Next Profile, Macro Prev Profile, Print via Serial, Print via IIC
 
-    //SetDebug(L_TRIGGER, 30, B_BUTTON, A_BUTTON);
+    SetDebug(L_TRIGGER, 30, B_BUTTON, A_BUTTON);
 
     if (Debug > 0)
       {
@@ -117,8 +117,8 @@ void InitSD()
           u8g.firstPage();
           do
             {
-              int x = 0;
-              int y = 5;
+              byte x = 0;
+              byte y = 5;
 
               u8g.setPrintPos(x,y);
               u8g.setFont(u8g_font_u8glib_4);
@@ -140,8 +140,7 @@ void InitSD()
               }
             
               // print the type of card
-              if (SDpresent == 1)
-                {
+              if (SDpresent == 1) {
                   u8g.setPrintPos(x,y+=10);
                   u8g.print("Card Type: ");
     
@@ -171,7 +170,7 @@ void InitSD()
                 
                   volumesize = volume.blocksPerCluster();    // clusters are collections of blocks
                   volumesize *= volume.clusterCount();       // we'll have a lot of clusters
-                  volumesize *= 512;                            // SD card blocks are always 512 bytes
+                  volumesize *= 512;                         // SD card blocks are always 512 bytes
                   
                   volumesize /= 1024;
                   volumesize /= 1024;
@@ -191,137 +190,132 @@ void InitSD()
   }
 
 
-void RapidFire(int TRIGGER_INPUT, unsigned int i, int TRIGGER_OUTPUT) {
-    if (TRIGGER_INPUT > i)
-    {
-        digitalWrite(TRIGGER_OUTPUT, LOW); // Sends signal that the trigger is pressed
+void RapidFire(int TRIGGER_INPUT, byte i, byte TRIGGER_OUTPUT) {
+    if (TRIGGER_INPUT > i) {
+        digitalWrite(TRIGGER_OUTPUT, LOW); // Trigger pressed
           delay(DELAY[Profile][0]);
           
-        digitalWrite(TRIGGER_OUTPUT, HIGH); // Sends signal that the trigger is released
+        digitalWrite(TRIGGER_OUTPUT, HIGH); // Trigger released
           delay(DELAY[Profile][1]);
      }
   }
 
 
-void SetDelay(int TRIGGER_INPUT, unsigned int i, bool DELAY_IN_UP, bool DELAY_IN_DOWN, bool DELAY_OUT_UP, bool DELAY_OUT_DOWN, int MinDelay, int MaxDelay)
-  {   
-    if (TRIGGER_INPUT > i && DELAY_IN_UP == LOW && DELAY[Profile][0] < MaxDelay) // Checks for if the L-Trigger & DPAD-UP is being pressed and that DELAY_IN in below MaxDelay
-      {
-        DELAY[Profile][0] += 5;
-          
-        PrintStats();
-          
-        delay(25);
-      }
-    
-    if (TRIGGER_INPUT > i && DELAY_IN_DOWN == LOW && DELAY[Profile][0] > MinDelay) // Checks for if the L-Trigger & DPAD-DOWN is being pressed and that DELAY_IN in above MinDelay
-      {
-        DELAY[Profile][0] -= 5;
-          
-        PrintStats();
-          
-        delay(25);
-      }
+void SetDelay(int TRIGGER_INPUT, byte i, bool DELAY_IN_UP, bool DELAY_IN_DOWN, bool DELAY_OUT_UP, bool DELAY_OUT_DOWN, int MinDelay, int MaxDelay)
+  {
+    if (TRIGGER_INPUT > i) {                                        // Check if Trigger is depressed
+      if (DELAY_IN_UP == LOW && DELAY[Profile][0] < MaxDelay) {     // Checks for if DPAD-UP is depressed and that DELAY_IN in below MaxDelay
+          DELAY[Profile][0] += 5;
+            
+          PrintStats();
+            
+          delay(25);
+        }
       
-    if (TRIGGER_INPUT > i && DELAY_OUT_UP == LOW && DELAY[Profile][1] < MaxDelay) // Checks for if the L-Trigger & DPAD-UP is being pressed and that DELAY_OUT in below MaxDelay
-      {
-        DELAY[Profile][1] += 5;
-          
-        PrintStats();
-          
-        delay(25);
-      }
-  
-    if (TRIGGER_INPUT > i && DELAY_OUT_DOWN == LOW && DELAY[Profile][1] > MinDelay) // Checks for if the L-Trigger & DPAD-DOWN is being pressed and that DELAY_IN in above MinValue
-      {
-        DELAY[Profile][1] -= 5;
-          
-        PrintStats();
-          
-        delay(25);
-      }
+      if (DELAY_IN_DOWN == LOW && DELAY[Profile][0] > MinDelay) {    // Checks for if DPAD-DOWN is depressed and that DELAY_IN in above MinDelay
+          DELAY[Profile][0] -= 5;
+            
+          PrintStats();
+            
+          delay(25);
+        }
+        
+      if (DELAY_OUT_UP == LOW && DELAY[Profile][1] < MaxDelay) {      // Checks for if DPAD-UP is depressed and that DELAY_OUT in below MaxDelay
+          DELAY[Profile][1] += 5;
+            
+          PrintStats();
+            
+          delay(25);
+        }
+    
+      if (DELAY_OUT_DOWN == LOW && DELAY[Profile][1] > MinDelay) {     // Checks for if DPAD-DOWN is depressed and that DELAY_IN in above MinValue
+          DELAY[Profile][1] -= 5;
+            
+          PrintStats();
+            
+          delay(25);
+        }
+    }
  }
  
 
-void SetProfile(int TRIGGER_INPUT, unsigned int i, bool PROFILE_NEXT, bool PROFILE_BACK)
+void SetProfile(int TRIGGER_INPUT, byte i, bool PROFILE_NEXT, bool PROFILE_BACK)
   {
-    if (PROFILE_NEXT == LOW && TRIGGER_INPUT > i && Profile <= Profiles)
-      {
-        Profile++;
-        
-        if (Profile == Profiles)
-          {
-            Profile = 0;
-          }
-        
-        PrintStats();
-         
-        delay(100);
-      }
-      
-    if (PROFILE_BACK == LOW && TRIGGER_INPUT > i && Profile >= 0)
-      {
-        if (Profile == 0)
-          {
-            Profile = Profiles;
-            Profile--;
-          }
+    if (TRIGGER_INPUT > i) {
+      if (PROFILE_NEXT == LOW && Profile <= Profiles) {
+          Profile++;
           
-        else if (Profile > 0)
-          {
-            Profile--;
-          }
+          if (Profile == Profiles)
+            {
+              Profile = 0;
+            }
           
-        PrintStats();
-         
-        delay(100);
-      }
+          PrintStats();
+           
+          delay(100);
+        }
+        
+      if (PROFILE_BACK == LOW && Profile >= 0) {
+          if (Profile == 0) {
+              Profile = Profiles;
+              Profile--;
+            }
+            
+          else if (Profile > 0) {
+              Profile--;
+            }
+            
+          PrintStats();
+           
+          delay(100);
+        }
+    }
   }
 
 
-void SetDebug(int TRIGGER_INPUT, unsigned int i, bool INC_DEBUG, bool DEC_DEBUG)
+void SetDebug(int TRIGGER_INPUT, byte i, bool INC_DEBUG, bool DEC_DEBUG)
   {
-    if (INC_DEBUG == LOW && TRIGGER_INPUT > i && Debug <= Debug_Max)
-      {
-        Debug++;
-        
-        if (Debug > Debug_Max)
-          {
-            Debug = 0;
-          }
-        
-        PrintStats();
-         
-        delay(100);
-      }
-      
-    if (DEC_DEBUG == LOW && TRIGGER_INPUT > i && Debug >= 0)
-      {
-        if (Debug == 0)
-          {
-            Debug = Debug_Max;
-          }
+    if (TRIGGER_INPUT) {
+      if (INC_DEBUG == LOW && Debug <= Debug_Max) {
+          Debug++;
           
-        else if (Debug > 0)
-          {
-            Debug--;
-          }
+          if (Debug > Debug_Max) {
+              Debug = 0;
+            }
           
-        PrintStats();
-         
-        delay(100);
-      }
+          PrintStats();
+           
+          delay(100);
+        }
+        
+      if (DEC_DEBUG == LOW && Debug >= 0)
+        {
+          if (Debug == 0)
+            {
+              Debug = Debug_Max;
+            }
+            
+          else if (Debug > 0)
+            {
+              Debug--;
+            }
+            
+          PrintStats();
+           
+          delay(100);
+        }
+    }
   }
 
 void PrintStats()
   {
-    int RPM = 60000 / (DELAY[Profile][0] + DELAY[Profile][1]);
+    unsigned int RPM = 60000 / (DELAY[Profile][0] + DELAY[Profile][1]);
     
           u8g.firstPage();  
           do 
             {
-              int x = 0;
-              int y = 5;
+              byte x = 0;
+              byte y = 5;
               
               u8g.setFont(u8g_font_u8glib_4);
               u8g.setPrintPos(x, y);
