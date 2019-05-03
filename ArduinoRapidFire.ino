@@ -5,7 +5,7 @@ enum {  // Will probably need at some point
     STATE_OUTPUT = 0x1
   };
 
-struct IO { // Define our pinout here
+struct IO { // Store pin map, state, and values here
     uint16_t trigPin : 5, trigState : 1, trigVal : 10;
   };
 
